@@ -13,9 +13,8 @@ os.makedirs(output_dir, exist_ok=True)
 # Dist denotes distance function available: hamming_distance, levenshtein_distance
 # eps, eps1, eps2 are regularization parameters
 
-#path_train = "C:/Users/bchan/Desktop/TUD/Thesis/Master_Roy/train_106.txt"
-path_train = "../../Master_Roy/train_106.txt"
-path_test = "../../Master_Roy/test_106.txt"
+path_train = "datasets/train_106.txt"
+path_test = "datasets/test_106.txt"
 diagram_path = 'reports/diagram_WP_LST_2.png'
 model_path = 'reports/model_WP_LST_2.lp'
 correct_label = 6
