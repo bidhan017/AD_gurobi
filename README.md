@@ -34,9 +34,9 @@ path_train = "path/to/training_dataset.txt"
 path_test = "path/to/test_dataset.txt"
 diagram_path = "path to save model diagram"
 model_path = "path to save model file"
-
-2. Set the correct label (class) from 0-6 for Alfred dataset for the test and train dataset in main.py
-3. Select the distance function (Hamming distance, Levenshtein distance)
-4. Set the three regularization parameters 
+```
+2. Set the correct label (class) from 0-6 for Alfred dataset for the test and train dataset in main.py.
+3. Select the distance function (Hamming distance, Levenshtein distance).
+4. Set the three regularization parameters.
 5. Run the main.py script to train the DFA and evaluate its performance on the test dataset.
   
