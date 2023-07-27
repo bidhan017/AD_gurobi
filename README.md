@@ -7,13 +7,6 @@ This project implements a trainer and tester for Deterministic Finite Automata (
 
 ## Prerequisites
 
-- Python 3.x
-- Gurobi Optimizer (install via pip: `pip install gurobipy`)
-- Pydot (install via pip: `pip install pydot`)
-- Automata-lib (install via pip: `pip install automata-lib`)
-- NumPy (install via pip: `pip install numpy`)
-- scikit-learn (install via pip: `pip install scikit-learn`)
-- itertools
 
 ## Project Structure
 
@@ -22,7 +15,7 @@ The project is organized into the following files:
 - `main.py`: The main script to run the training and testing process.
 - `algorithms/model.py`: Contains functions for training the DFA using Gurobi and creating a diagram of the DFA.
 - `preprocessing.py`: Contains functions for data preprocessing.
-- `distances.py`: Contains distance functions like `hamming_distance`, `levenshtein_distance` as well as Custom distances.
+- `distances.py`: Contains distance functions like `hamming_distance`, `levenshtein_distance` as well as `Custom distances`.
 
 
 ## Usage
