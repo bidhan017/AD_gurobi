@@ -19,17 +19,23 @@ The project is organized into the following files:
 
 
 ## Usage
-
-1. Set the paths to the training and test dataset as well as to reports in `main.py`.
-
-```python
-path_train = "path/to/training_dataset.txt"
-path_test = "path/to/test_dataset.txt"
-diagram_path = "path to save model diagram"
-model_path = "path to save model file"
 ```
-2. Set the correct label (class) from 0-6 for Alfred dataset for the test and train dataset in main.py.
-3. Select the distance function (Hamming distance, Levenshtein distance).
-4. Set the three regularization parameters.
-5. Run the main.py script to train the DFA and evaluate its performance on the test dataset.
+python main.py [-h] --train_data TRAIN_DATA --test_data TEST_DATA --Dist {HD,LD} [--cl CL]
+               [--eps EPS] [--eps1 EPS1] [--eps2 EPS2]
+```
+Anomaly detection via discrete optimization
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --train_data TRAIN_DATA
+                        available dataset for training (train_100, train_101, train_102, train_103,
+                        train_104, train_105, train_106)
+  --test_data TEST_DATA
+                        available dataset for testing (test_100, test_101, test_103, test_104,
+                        test_105, test_106)
+  --Dist {HD,LD}        use HD: hamming_distance, LD: levenshtein_distance
+  --cl CL               correct labels (0, 1, 2, 3, 4, 5, 6)
+  --eps EPS             any float value
+  --eps1 EPS1           any float value
+  --eps2 EPS2           any float value
   
