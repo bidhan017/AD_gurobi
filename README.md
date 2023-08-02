@@ -22,8 +22,6 @@ The project is organized into the following files:
 ```
 python main.py [-h] --train_data TRAIN_DATA --test_data TEST_DATA --Dist {HD,LD} [--cl CL]
                [--eps EPS] [--eps1 EPS1] [--eps2 EPS2]
-```
-Anomaly detection via discrete optimization
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -38,4 +36,5 @@ optional arguments:
   --eps EPS             any float value
   --eps1 EPS1           any float value
   --eps2 EPS2           any float value
+```
   
