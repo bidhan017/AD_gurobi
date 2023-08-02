@@ -2,52 +2,51 @@
 from Levenshtein import distance
 from scipy.spatial.distance import hamming
 import numpy as np
+from .utils import make_lists_equal_length
 
-def levenshtein_distance(str_list):
+def levenshtein_distance(Lst_list):
+    '''Calculate levenshtein distance between all pairs of list in a given list
     
-    dist_matrix = np.zeros(shape=(len(str_list), len(str_list)))
-    #t0 = time()
-    #print("Starting to build distance matrix. This will iterate from 0 till ", len(str_list)) 
-    for i in range(0, len(str_list)):
-        #print(i)
-        for j in range(i+1, len(str_list)):
-                dist_matrix[i][j] = distance(str_list[i], str_list[j]) 
-    for i in range(0, len(str_list)):
-        for j in range(0, len(str_list)):
+    Parameter:
+    Lst_list (list): List of list
+
+    Returns:
+    dist_matrix (numpy.ndarray): square matrix containing distance between all pair of list    
+    '''
+    
+    dist_matrix = np.zeros(shape=(len(Lst_list), len(Lst_list)))
+    for i in range(0, len(Lst_list)):
+        for j in range(i+1, len(Lst_list)):
+                dist_matrix[i][j] = distance(Lst_list[i], Lst_list[j]) 
+    for i in range(0, len(Lst_list)):
+        for j in range(0, len(Lst_list)):
             if i == j:
                 dist_matrix[i][j] = 0 
             elif i > j:
                 dist_matrix[i][j] = dist_matrix[j][i]
-    #t1 = time()
-    #print("took", (t1-t0), "seconds")
+
     return dist_matrix
 
-#dist =get_levenshtein_distance_matrix(FL)
+def hamming_distance(Lst_list):
+    '''Calculate Hamming distance between all pairs of list in a given list
+    
+    Parameters:
+    Lst_list (list): List of list for which distance are to be calculated
 
-def make_lists_equal_length(list1, list2):
-    if len(list1) == len(list2):
-        return list1, list2
+    Returns:
+    dist_matrix (numpy.ndarray): square matrix containing distance between all pair of list    
+    '''
 
-    if len(list1) < len(list2):
-        list1 += ['a'] * (len(list2) - len(list1))
-    else:
-        list2 += ['a'] * (len(list1) - len(list2))
+    dist_matrix = np.zeros(shape=(len(Lst_list), len(Lst_list)))
+    for i in range(0, len(Lst_list)):
+        for j in range(i+1, len(Lst_list)):
+            if len(Lst_list[i]) != len(Lst_list[j]):
+                Lst_list[i], Lst_list[j]= make_lists_equal_length(Lst_list[i], Lst_list[j])
 
-    return list1, list2
-
-def hamming_distance(list_list):
-    #distance = 0
-    dist_matrix = np.zeros(shape=(len(list_list), len(list_list)))
-    for i in range(0, len(list_list)):
-        #print(i)
-        for j in range(i+1, len(list_list)):
-            if len(list_list[i]) != len(list_list[j]):
-                list_list[i], list_list[j]= make_lists_equal_length(list_list[i], list_list[j])
-
-            dist_matrix[i][j] = hamming(list(list_list[i]), list(list_list[j]))*len(list(list_list[i]))
+            dist_matrix[i][j] = hamming(list(Lst_list[i]), list(Lst_list[j]))*len(list(Lst_list[i]))
         
-    for i in range(0, len(list_list)):
-        for j in range(0, len(list_list)):
+    for i in range(0, len(Lst_list)):
+        for j in range(0, len(Lst_list)):
             if i == j:
                 dist_matrix[i][j] = 0 
             elif i > j:
@@ -55,32 +54,32 @@ def hamming_distance(list_list):
     
     return dist_matrix
 
-def custom_distance(str_list):
+def custom_distance(Lst_list):
     
-    dist_matrix = np.zeros(shape=(len(str_list), len(str_list)))
-    for i in range(0, len(str_list)):
-        for j in range(i+1, len(str_list)):
-            if str_list[i][-1] == str_list[j][-1]:
-                dist_matrix[i][j] = abs(round(float(str_list[i][0])-float(str_list[j][0]),1))
+    dist_matrix = np.zeros(shape=(len(Lst_list), len(Lst_list)))
+    for i in range(0, len(Lst_list)):
+        for j in range(i+1, len(Lst_list)):
+            if Lst_list[i][-1] == Lst_list[j][-1]:
+                dist_matrix[i][j] = abs(round(float(Lst_list[i][0])-float(Lst_list[j][0]),1))
             else:           
-                dist_matrix[i][j] = abs(round(float(str_list[i][0])+float(str_list[j][0])-1,1))
-    for i in range(0, len(str_list)):
-        for j in range(0, len(str_list)):
+                dist_matrix[i][j] = abs(round(float(Lst_list[i][0])+float(Lst_list[j][0])-1,1))
+    for i in range(0, len(Lst_list)):
+        for j in range(0, len(Lst_list)):
             if i == j:
                 dist_matrix[i][j] = 0 
             elif i > j:
                 dist_matrix[i][j] = dist_matrix[j][i]
     return dist_matrix
 
-def custom_distanceW(str_list):
+def custom_distanceW(Lst_list):
     
-    dist_matrix = np.zeros(shape=(len(str_list), len(str_list)))
-    for i in range(0, len(str_list)):
-        for j in range(i+1, len(str_list)):
-            dist_matrix[i][j] = sum(abs(str_list[i]-str_list[j]))
+    dist_matrix = np.zeros(shape=(len(Lst_list), len(Lst_list)))
+    for i in range(0, len(Lst_list)):
+        for j in range(i+1, len(Lst_list)):
+            dist_matrix[i][j] = sum(abs(Lst_list[i]-Lst_list[j]))
 
-    for i in range(0, len(str_list)):
-        for j in range(0, len(str_list)):
+    for i in range(0, len(Lst_list)):
+        for j in range(0, len(Lst_list)):
             if i == j:
                 dist_matrix[i][j] = 0 
             elif i > j:

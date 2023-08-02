@@ -1,8 +1,7 @@
 import copy
 
 def data_preprocess(path_train, Dist):
-    '''
-    Preprocess the dataset for training the DFA
+    '''Preprocess the dataset for training the DFA
 
     Parameters:
     path_train (str): path of a training dataset
