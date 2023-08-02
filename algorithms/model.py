@@ -2,133 +2,136 @@
 import gurobipy as gp
 from gurobipy import GRB
 import numpy as np
-from pydot import Dot, Edge, Node
+#from pydot import Dot, Edge, Node
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 import itertools
 from time import time
 from automata.fa.dfa import DFA
 from preprocessing import data_preprocess
+from utils import create_transition_dict, create_diagram
 
 
-def train(n, path_train, Dist, model_path, diagram_path, eps, eps1, eps2):
-    '''
-    Train a DFA using Gurobi optimization.
+def train(n, path_train, Dist, eps, eps1, eps2):
+    '''Train a DFA using Gurobi optimization.
 
     Parameters: 
     n (int) : Number of states in the DFA
     path_train (str): path of training dataset
     Dist (function): Distance function to use for training
+    model_path (str): path to store the model file
+    diagram_path (str): path to store model diagram
     eps, eps1, eps2 (float): Regularization parameter for the constraints in Objective function 
 
     Returns:
     dfa1: Trained DFA model
     '''
-
+    #Pre-process the dataset and return required variables
     alphabet, Pref_S, Lst, FL, dist = data_preprocess(path_train, Dist)
     states = {str(f'q{i}') for i in range(n)}
     start_state = 'q0'
 
+    #Initialize gurobi environment
     env=gp.Env(empty=True)
     env.setParam('OutputFlag', 0)
     env.start()
     
     t0 = time()
     
-    # Creating a new model
-    mwplst = gp.Model("DFA_LST", env=env)
+    # Creating a new Gurobi model
+    m = gp.Model("DFA_LST", env=env)
 
     #DECISION VARIABLES
-    delta = mwplst.addVars(states, alphabet, states, vtype=gp.GRB.BINARY, name='delta')
-    x = mwplst.addVars(Pref_S, states, vtype=gp.GRB.BINARY, name='x')
-    f = mwplst.addVars(states, vtype=gp.GRB.BINARY, name='f')
-    alpha = mwplst.addVars(len(Lst), states, vtype=gp.GRB.BINARY, name= 'alpha')
-    beta = mwplst.addVars(len(Lst), states, vtype=gp.GRB.BINARY, name= 'beta')
+    delta = m.addVars(states, alphabet, states, vtype=gp.GRB.BINARY, name='delta')
+    x = m.addVars(Pref_S, states, vtype=gp.GRB.BINARY, name='x')
+    f = m.addVars(states, vtype=gp.GRB.BINARY, name='f')
+    alpha = m.addVars(len(Lst), states, vtype=gp.GRB.BINARY, name= 'alpha')
+    beta = m.addVars(len(Lst), states, vtype=gp.GRB.BINARY, name= 'beta')
 
     #OBJECTIVE FUNCTION
     print(f'eps:{eps}, eps1:{eps1}, eps2:{eps2}')
     lambda_nn = len(FL)*(len(FL)-1)*np.max(dist)
     #lambda_na = len(FL)*len(FL)*np.max(dist)
     
-    mwplst.setObjective(sum(beta[i,state1]*beta[k,state2]*dist[i,k]*(eps/lambda_nn) for i,_ in enumerate(FL) for state1 in states for k,_ in enumerate(FL) for state2 in states if dist[i,k] != 0) \
-                    #+ sum(beta[i,state1]*alpha[k,state2]*(np.max(dist)-dist[i,k])*(epsilon3/lambda_na) for i,_ in enumerate(FL) for state1 in states for k,_ in enumerate(FL) for state2 in states if (np.max(dist)-dist[i,k]) != 0) \
-                    + sum(alpha[k,state2]*(eps1/len(FL)) for k,_ in enumerate(FL) for state2 in states) \
-                    + sum(delta[state1,symbol,state2]*eps2 for state1 in states for symbol in alphabet for state2 in states if state1 != state2), \
+    m.setObjective(sum(beta[i,s0]*beta[k,s1]*dist[i,k]*(eps/lambda_nn) for i,_ in enumerate(FL) for s0 in states for k,_ in enumerate(FL) for s1 in states if dist[i,k] != 0) \
+                    #+ sum(beta[i,s0]*alpha[k,s1]*(np.max(dist)-dist[i,k])*(epsilon3/lambda_na) for i,_ in enumerate(FL) for s0 in states for k,_ in enumerate(FL) for s1 in states if (np.max(dist)-dist[i,k]) != 0) \
+                    + sum(alpha[k,s1]*(eps1/len(FL)) for k,_ in enumerate(FL) for s1 in states) \
+                    + sum(delta[s0,symbol,s1]*eps2 for s0 in states for symbol in alphabet for s1 in states if s0 != s1), \
                           gp.GRB.MINIMIZE)
     
     #AUTOMATA CONSTRAINTS
-    #Constraint1
-    for state0 in states:
+    #Constraint1 
+    for s0 in states:
         for symbol in alphabet:
-            mwplst.addConstr(sum(delta[state0,symbol,state1] for state1 in states)==1, name=f'delta[{state0},{symbol}]')
+            m.addConstr(sum(delta[s0,symbol,s1] for s1 in states)==1, name=f'delta[{s0},{symbol}]')
+    
+    #Constraint2 
+    for Pref in Pref_S:
+        m.addConstr(sum(x[Pref,s1] for s1 in states)==1, name=f'x[{Pref}]')
 
-    #Constraint2
-    for word in Pref_S:
-        mwplst.addConstr(sum(x[word,state1] for state1 in states)==1, name=f'x[{word}]')
-
-    #Constraint3
-    mwplst.addConstr(x['',start_state]==1, name='initial_state')
+    #Constraint3 
+    m.addConstr(x['',start_state]==1, name='initial_state')
 
     #Constraint4 
-    for state0, word, symbol, state1 in itertools.product(states, Pref_S, alphabet, states):
-        if (word + ',' + symbol) in Pref_S:
-            mwplst.addConstr(x[word, state0] + delta[state0, symbol, state1] - 1 <= x[word + ',' + symbol, state1], name=f'transition[{state0},{word},{symbol},{state1}]')
-        if word == '' and symbol in Pref_S:
-            mwplst.addConstr(x[word, state0] + delta[state0, symbol, state1] - 1 <= x[symbol, state1], name=f'transition[{state0},{word},{symbol},{state1}]')
+    for s0, Pref, symbol, s1 in itertools.product(states, Pref_S, alphabet, states):
+        if (Pref + ',' + symbol) in Pref_S:
+            m.addConstr(x[Pref, s0] + delta[s0, symbol, s1] - 1 <= x[Pref + ',' + symbol, s1], name=f'transition[{s0},{Pref},{symbol},{s1}]')
+        if Pref == '' and symbol in Pref_S:
+            m.addConstr(x[Pref, s0] + delta[s0, symbol, s1] - 1 <= x[symbol, s1], name=f'transition[{s0},{Pref},{symbol},{s1}]')
 
-    #BOUND CONSTRAINTS
-    for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(alpha[i, state1] >= x[word,state1] + f[state1] -1, name=f'bound_1[{state1},{i}]')        
+    #BOUND CONSTRAINTS (for alpha and beta variables)
 
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(alpha[i, state1] <= x[word,state1], name=f'bound_2[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(alpha[i, s1] >= x[word,s1] + f[s1] -1, name=f'bound_1[{s1},{i}]')        
 
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(alpha[i, state1] <= f[state1], name=f'bound_3[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(alpha[i, s1] <= x[word,s1], name=f'bound_2[{s1},{i}]')
+
+    for i, word in enumerate(Lst):
+        for s1 in states:
+            m.addConstr(alpha[i, s1] <= f[s1], name=f'bound_3[{s1},{i}]')
     
     #not valid MILP constraint
     '''
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(x[word, state1] * (1-f[state1]) == beta[i, state1], name=f'bound_4[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(x[word, s1] * (1-f[s1]) == beta[i, s1], name=f'bound_4[{s1},{i}]')
     '''
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(beta[i, state1] >= x[word,state1] + (1-f[state1]) -1, name=f'bound_5[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(beta[i, s1] >= x[word,s1] + (1-f[s1]) -1, name=f'bound_5[{s1},{i}]')
 
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(beta[i, state1] <= x[word,state1], name=f'bound_6[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(beta[i, s1] <= x[word,s1], name=f'bound_6[{s1},{i}]')
 
     for i, word in enumerate(Lst):
-        for state1 in states:
-            mwplst.addConstr(beta[i, state1] <= (1-f[state1]), name=f'bound_7[{state1},{i}]')
+        for s1 in states:
+            m.addConstr(beta[i, s1] <= (1-f[s1]), name=f'bound_7[{s1},{i}]')
 
     #optimize the model
-    mwplst.optimize()
+    m.optimize()
     
     t1 = time()
     print("Run time", (t1-t0), "seconds")
 
     #write the model
-    #mwplst.write(rf'C:\Users\bchan\Desktop\TUD\Thesis\model_WP_LST_{n}.lp')
-    mwplst.write(model_path)
+    m.write(f'reports/model_WP_LST_{n}.lp')
     
-    if mwplst.status == 1:
+    if m.status == 1:
         status = 'LOADED'
-        print(f'DFAmodel_{n} LOADED')
-        #dfa1 = DFA(states=states,input_symbols=alphabet, transitions= transition_dict, initial_state= start_state, final_states={'q0'})
-    
-    elif mwplst.status == 2:
-        print(f'DFAmodel_{n} OPTIMAL')
+        print(f'DFAmodel_{n}: {status}')
+            
+    elif m.status == 2:
         status='OPTIMAL'
-        transitions = mwplst.getAttr('X', delta)
-        t_values = [(s1,a,s2) for s1 in states for s2 in states for a in alphabet if round(transitions[s1, a, s2],0) == 1]
+        print(f'DFAmodel_{n}: {status}')
+        
+        transitions = m.getAttr('X', delta)
+        t_values = [(s0,a,s1) for s0 in states for s1 in states for a in alphabet if round(transitions[s0, a, s1],0) == 1]
         #for t in t_values:
             #print(t)
-        f_s = mwplst.getAttr('X', f)
+        f_s = m.getAttr('X', f)
         final_state = {s1 for s1 in states if round(f_s[s1],0) == 1}
 
         transition_dict = create_transition_dict(states, alphabet, t_values)
@@ -147,85 +150,19 @@ def train(n, path_train, Dist, model_path, diagram_path, eps, eps1, eps2):
         print(f'Accepted in Training:{accepted}')
         print(f'Rejected in Training:{rejected}')
 
-        create_diagram(diagram_path, states, start_state,final_state, transition_dict)
-        #create_diagram(rf'C:\Users\bchan\Desktop\TUD\Thesis\diagram_WP_LST_{n}.png', states, start_state,final_state, transition_dict)        
+        create_diagram(f'reports/diagram_WP_LST_{n}.png', states, start_state,final_state, transition_dict)
         return dfa1        
     
-    elif mwplst.status == 3:
+    elif m.status == 3:
         status = 'INFEASIBLE'
-        print(f'DFAmodel_{n} INFEASIBLE')
+        print(f'DFAmodel_{n}: {status} ')
+
     else:
-        print('status unknown, DEBUG!!')    
- 
-    return status
-
-
-def create_transition_dict(states, alphabet, t_values):
-    transition_dict = {}
-
-    for state in states:
-        transition_dict[state] = {}
-        for symbol in alphabet:
-            transition_dict[state][symbol] = None
-
-    for trans in t_values:
-        current_state, symbol, next_state = trans
-        transition_dict[current_state][symbol] = next_state
-
-    return transition_dict
-
-
-def create_diagram(path, states, start_state, final_state, transition_dict):
-    '''
-    Create diagram of DFA using pydot library and save it in png format
-
-    Parameters:
-    path (str): Path to the file where diagram will be saved
-    states (set): Set of states in DFA
-    start_state (str): Initial state of DFA
-    final_state (set): Set of final states in DFA
-    transition_dict (dict): Dictionary representing the transitions of DFA
-
-    '''
-    graph = Dot(graph_type='digraph', rankdir='LR')
-    nodes = {}
-    for state in states:
-        if state == start_state:
-            # color start state with green
-            if state in final_state:
-                initial_state_node = Node(
-                    state,
-                    style='filled',
-                    peripheries=2,
-                    fillcolor='#66cc33')
-            else:
-                initial_state_node = Node(
-                    state, style='filled', fillcolor='#66cc33')
-            nodes[state] = initial_state_node
-            graph.add_node(initial_state_node)
-        else:
-            if state in final_state:
-                state_node = Node(state, peripheries=2)
-            else:
-                state_node = Node(state)
-            nodes[state] = state_node
-            graph.add_node(state_node)
-    # adding edges
-    for from_state, lookup in transition_dict.items():
-        for to_label, to_state in lookup.items():
-            graph.add_edge(Edge(
-                nodes[from_state],
-                nodes[to_state],
-                label=to_label
-            ))
-    if path:
-        graph.write_png(path)
-    return graph
+        print('status unknown, DEBUG!!')
 
 
 def test(path_test, correct_label, dfa1):
-    '''
-    Test the trained DFA on a test dataset and evaluate its performance
+    '''Test the trained DFA on a test dataset and evaluate its performance
 
     Parameters:
     path_test (str): Path to test dataset file
