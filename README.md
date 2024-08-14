@@ -1,5 +1,5 @@
 # AD_gurobi
-Anomaly detection using DFA via Gurobi optimizer
+Anomaly detection using automata learning and optimization technique
 
 # Deterministic Finite Automaton (DFA) Trainer and Tester
 
